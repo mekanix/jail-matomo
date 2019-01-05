@@ -1,0 +1,39 @@
+---
+- name: install matomo packages
+  with_items: "{{ matomo_packages }}"
+  package:
+    name: "{{ item.name }}"
+  notify:
+    - restart php fpm
+
+- name: enable php fpm
+  template:
+    src: php_fpm.j2
+    dest: /etc/rc.conf.d/php_fpm
+  notify:
+    - restart php fpm
+
+- stat: path=/etc/hbsd-update.conf
+  register: hbsd_update
+
+- name: install secadm
+  package:
+    name: secadm
+  when: hbsd_update.stat.exists == True
+  notify:
+    - restart secadm rules
+
+- name: configure secadm
+  template:
+    src: secadm.rules.j2
+    dest: /usr/local/etc/secadm.rules
+  when: hbsd_update.stat.exists == True
+  notify:
+    - restart secadm rules
+
+- name: enable secadm
+  template:
+    src: secadm.j2
+    dest: /etc/rc.conf.d/secadm
+  notify:
+    - restart secadm rules
